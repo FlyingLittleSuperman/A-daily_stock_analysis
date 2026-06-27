@@ -42,6 +42,7 @@ type StockAnalysisNavigationState = {
 };
 
 const DUPLICATE_BANNER_AUTO_DISMISS_MS = 5000;
+const MAX_HOME_SELECTED_SKILLS = 5;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -54,7 +55,7 @@ const HomePage: React.FC = () => {
   const [marketReviewReport, setMarketReviewReport] = useState<string | null>(null);
   const [marketReviewPayload, setMarketReviewPayload] = useState<MarketReviewPayload | null>(null);
   const [analysisSkills, setAnalysisSkills] = useState<SkillInfo[]>([]);
-  const [selectedStrategyId, setSelectedStrategyId] = useState('');
+  const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>([]);
   const [strategyMenuOpen, setStrategyMenuOpen] = useState(false);
   const [runFlowDrawer, setRunFlowDrawer] = useState<RunFlowDrawerState>({ open: false });
   const [duplicateBannerVisible, setDuplicateBannerVisible] = useState(false);
@@ -225,10 +226,15 @@ const HomePage: React.FC = () => {
   }, [strategyMenuOpen]);
 
   useEffect(() => {
-    if (selectedStrategyId && !analysisSkills.some((skill) => skill.id === selectedStrategyId)) {
-      setSelectedStrategyId('');
+    if (selectedStrategyIds.length === 0) {
+      return;
     }
-  }, [analysisSkills, selectedStrategyId]);
+    const availableIds = new Set(analysisSkills.map((skill) => skill.id));
+    const filtered = selectedStrategyIds.filter((skillId) => availableIds.has(skillId));
+    if (filtered.length !== selectedStrategyIds.length) {
+      setSelectedStrategyIds(filtered);
+    }
+  }, [analysisSkills, selectedStrategyIds]);
 
   const reportLanguage = normalizeReportLanguage(selectedReport?.meta.reportLanguage);
   const liveMarketReviewLanguage = normalizeReportLanguage(marketReviewPayload?.language);
@@ -242,13 +248,27 @@ const HomePage: React.FC = () => {
     closeHistoryTrend();
   }, [closeHistoryTrend, isHistoryTrendOpen, isHistoryTrendUnavailable]);
 
-  const selectedStrategy = useMemo(
-    () => analysisSkills.find((skill) => skill.id === selectedStrategyId),
-    [analysisSkills, selectedStrategyId],
+  const selectedStrategies = useMemo(
+    () => selectedStrategyIds
+      .map((skillId) => analysisSkills.find((skill) => skill.id === skillId))
+      .filter((skill): skill is SkillInfo => Boolean(skill)),
+    [analysisSkills, selectedStrategyIds],
   );
   const selectedAnalysisSkills = useMemo(
-    () => (selectedStrategyId ? [selectedStrategyId] : undefined),
-    [selectedStrategyId],
+    () => (selectedStrategyIds.length > 0 ? selectedStrategyIds : undefined),
+    [selectedStrategyIds],
+  );
+  const selectedStrategyLabel = useMemo(
+    () => {
+      if (selectedStrategies.length === 0) {
+        return t('home.strategy');
+      }
+      if (selectedStrategies.length === 1) {
+        return selectedStrategies[0].name;
+      }
+      return `${selectedStrategies[0].name} +${selectedStrategies.length - 1}`;
+    },
+    [selectedStrategies, t],
   );
   const strategyOptions = useMemo(
     () => [
@@ -267,9 +287,20 @@ const HomePage: React.FC = () => {
       strategyButtonRef.current?.focus();
     }
   }, []);
-  const selectStrategy = useCallback((strategyId: string) => {
-    setSelectedStrategyId(strategyId);
-    setStrategyMenuOpen(false);
+  const toggleStrategy = useCallback((strategyId: string) => {
+    if (!strategyId) {
+      setSelectedStrategyIds([]);
+      return;
+    }
+    setSelectedStrategyIds((prev) => {
+      if (prev.includes(strategyId)) {
+        return prev.filter((id) => id !== strategyId);
+      }
+      if (prev.length >= MAX_HOME_SELECTED_SKILLS) {
+        return prev;
+      }
+      return [...prev, strategyId];
+    });
   }, []);
   const focusStrategyItem = useCallback((index: number) => {
     const itemCount = strategyOptions.length;
@@ -280,9 +311,11 @@ const HomePage: React.FC = () => {
     strategyItemRefs.current[nextIndex]?.focus();
   }, [strategyOptions.length]);
   const getSelectedStrategyIndex = useCallback(() => {
-    const selectedIndex = strategyOptions.findIndex((option) => option.id === selectedStrategyId);
+    const selectedIndex = strategyOptions.findIndex((option) => (
+      option.id ? selectedStrategyIds.includes(option.id) : selectedStrategyIds.length === 0
+    ));
     return selectedIndex >= 0 ? selectedIndex : 0;
-  }, [selectedStrategyId, strategyOptions]);
+  }, [selectedStrategyIds, strategyOptions]);
   useEffect(() => {
     strategyItemRefs.current = strategyItemRefs.current.slice(0, strategyOptions.length);
   }, [strategyOptions.length]);
@@ -731,7 +764,7 @@ const HomePage: React.FC = () => {
                     className="home-surface-button flex h-10 max-w-[8.5rem] items-center gap-1.5 rounded-xl px-3 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[11rem]"
                   >
                     <SlidersHorizontal className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                    <span className="truncate">{selectedStrategy?.name || t('home.strategy')}</span>
+                    <span className="truncate">{selectedStrategyLabel}</span>
                   </button>
                   {strategyMenuOpen ? (
                     <div
@@ -741,8 +774,12 @@ const HomePage: React.FC = () => {
                       onKeyDown={handleStrategyMenuKeyDown}
                       className="absolute right-0 top-11 z-[120] max-h-80 w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-subtle bg-elevated p-1.5 text-sm text-foreground shadow-2xl"
                     >
+                      <div className="px-2.5 pb-1 pt-0.5 text-[11px] leading-4 text-muted-text">
+                        可多选，最多 {MAX_HOME_SELECTED_SKILLS} 个；默认策略表示不指定技能。
+                      </div>
                       {strategyOptions.map((option, index) => {
-                        const selected = selectedStrategyId === option.id;
+                        const selected = option.id ? selectedStrategyIds.includes(option.id) : selectedStrategyIds.length === 0;
+                        const disabled = Boolean(option.id) && !selected && selectedStrategyIds.length >= MAX_HOME_SELECTED_SKILLS;
                         return (
                           <button
                             key={option.id || 'default'}
@@ -750,11 +787,12 @@ const HomePage: React.FC = () => {
                               strategyItemRefs.current[index] = node;
                             }}
                             type="button"
-                            role="menuitemradio"
+                            role="menuitemcheckbox"
                             aria-checked={selected}
+                            disabled={disabled}
                             tabIndex={-1}
-                            onClick={() => selectStrategy(option.id)}
-                            className="flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-hover"
+                            onClick={() => toggleStrategy(option.id)}
+                            className="flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-45"
                           >
                             <Check className={`mt-0.5 h-4 w-4 flex-shrink-0 ${selected ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
                             <span className="min-w-0">

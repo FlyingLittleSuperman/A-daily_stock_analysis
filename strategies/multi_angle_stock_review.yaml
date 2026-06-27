@@ -1,0 +1,46 @@
+name: multi_angle_stock_review
+display_name: 多角度个股会诊
+description: 用基本面、估值、技术面、资金面、新闻事件、情绪、风险、交易计划多个视角会诊单只股票，适合你希望“一只股票多个角度一起看”的场景。
+category: framework
+core_rules: [1, 2, 3, 4, 5, 6, 7]
+required_tools:
+  - get_stock_info
+  - get_realtime_quote
+  - get_daily_history
+  - get_analysis_context
+  - search_stock_news
+  - search_comprehensive_intel
+  - analyze_trend
+  - get_sector_rankings
+  - get_skill_backtest_summary
+aliases: [多角度, 会诊, 综合会诊, 多策略分析, 多维分析]
+default_active: true
+default_router: true
+default_priority: 10
+market_regimes: [trending_up, trending_down, sideways, volatile, sector_hot]
+
+instructions: |
+  **多角度个股会诊**
+
+  目标：当用户希望对同一只股票做多个角度分析时，不只套一个策略，而是组织多个视角形成共识与分歧。
+
+  必须覆盖以下视角：
+  1. 基本面：主营、盈利质量、现金流、ROE、成长性。
+  2. 估值：绝对估值、历史分位、同行对比、增长能否消化估值。
+  3. 技术面：趋势、均线、量价、支撑压力、是否追高。
+  4. 资金面：成交放大、换手、筹码结构、主力/情绪迹象。
+  5. 新闻事件：近期催化、公告、行业政策、市场传闻的可信度。
+  6. 情绪面：题材热度、FOMO、风险偏好、退潮风险。
+  7. 风险面：估值、现金流、减持、原材料、监管、技术替代、业绩兑现。
+  8. 交易计划：适合观察、低吸、趋势跟随、减仓还是回避，并给出触发条件。
+
+  共识输出：
+  - 先列“支持看多的证据”和“支持谨慎的证据”。
+  - 再列“分歧点”：哪些视角互相冲突，例如技术强但估值贵、行业热但公司利润没兑现。
+  - 最后给“核心矛盾”和“验证清单”。
+
+  交易纪律：
+  - 若短期涨幅过大且偏离 MA5 超过 5%，必须提示不追高。
+  - 若估值处于极高分位，必须下调风险收益评价。
+  - 若经营现金流恶化，不能只用利润增速给正面结论。
+  - 若当前信息不足，给观察条件，不强行判断。

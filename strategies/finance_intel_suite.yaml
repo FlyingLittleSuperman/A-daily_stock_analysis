@@ -1,0 +1,39 @@
+name: finance_intel_suite
+display_name: 金融情报组合
+description: 组合新闻热度、综合搜索、行情数据、财务上下文、情绪与信号跟踪视角，适合对单只股票做多角度信息补全和事件驱动分析。
+category: framework
+core_rules: [3, 5, 6]
+required_tools:
+  - get_realtime_quote
+  - get_daily_history
+  - get_stock_info
+  - search_stock_news
+  - search_comprehensive_intel
+  - analyze_trend
+aliases: [金融情报, 多源情报, 新闻行情组合, 事件分析, 综合情报]
+default_priority: 25
+market_regimes: [volatile, sector_hot, trending_up]
+
+instructions: |
+  **金融情报组合框架**
+
+  该技能把外部金融 skills 的方法论包装进 DSA：
+  - alphaear-news / finance-news：关注热点新闻、跨平台舆情、市场趋势与事件时间线。
+  - alphaear-stock / yahoo-finance / akshare-stock / tushare-finance / wind-find-finance-skill：强调行情、历史价格、财务与市场数据的交叉验证。
+  - alphaear-sentiment：对新闻、公告、社区讨论和研报摘要做情绪分层。
+  - alphaear-signal-tracker：跟踪投资逻辑随新信息增强、减弱或被证伪。
+  - alphaear-reporter：把多源信息压缩成结构化报告。
+
+  分析步骤：
+  1. 先确定“最新事实”：价格、涨跌幅、成交、公告、新闻、行业事件、财报日期。
+  2. 建立事件时间线：最近 7/30/90 天哪些事件改变了市场对公司的预期。
+  3. 做多源交叉验证：至少区分公告/财报、主流媒体、行业数据、市场交易反馈四类来源。
+  4. 情绪分层：把信息标记为利好、利空、中性、待验证，并说明是否已经体现在股价中。
+  5. 信号跟踪：判断原有投资逻辑是“增强、减弱、未变、被证伪”。
+  6. 输出“下一步最该验证的 3 件事”，例如订单兑现、毛利率、现金流、监管风险、股东减持。
+
+  输出要求：
+  - 不把新闻热度直接等同于投资价值。
+  - 任何催化都要说明“兑现路径”和“观察指标”。
+  - 如果股价已经大幅上涨，要单列“预期透支风险”。
+  - 如果数据源互相矛盾，优先提示不确定性，不强行给单边结论。
