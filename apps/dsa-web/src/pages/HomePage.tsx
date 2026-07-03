@@ -43,6 +43,19 @@ type StockAnalysisNavigationState = {
 
 const DUPLICATE_BANNER_AUTO_DISMISS_MS = 5000;
 const MAX_HOME_SELECTED_SKILLS = 5;
+const ONE_CLICK_EIGHT_ZISU_CHAN_ID = '__preset_eight_zisu_chan';
+const ONE_CLICK_EIGHT_ZISU_CHAN_SKILLS = [
+  'eight_dimension_deep_analysis',
+  'zisuye_theme_trading',
+  'chan_theory',
+] as const;
+
+type StrategyMenuOption = {
+  id: string;
+  name: string;
+  description: string;
+  skillIds?: string[];
+};
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -254,12 +267,23 @@ const HomePage: React.FC = () => {
       .filter((skill): skill is SkillInfo => Boolean(skill)),
     [analysisSkills, selectedStrategyIds],
   );
+  const oneClickPresetSkillIds = useMemo(() => {
+    const availableIds = new Set(analysisSkills.map((skill) => skill.id));
+    return ONE_CLICK_EIGHT_ZISU_CHAN_SKILLS.filter((skillId) => availableIds.has(skillId));
+  }, [analysisSkills]);
+  const isOneClickPresetAvailable = oneClickPresetSkillIds.length === ONE_CLICK_EIGHT_ZISU_CHAN_SKILLS.length;
+  const isOneClickPresetSelected = isOneClickPresetAvailable
+    && ONE_CLICK_EIGHT_ZISU_CHAN_SKILLS.every((skillId) => selectedStrategyIds.includes(skillId))
+    && selectedStrategyIds.length === ONE_CLICK_EIGHT_ZISU_CHAN_SKILLS.length;
   const selectedAnalysisSkills = useMemo(
     () => (selectedStrategyIds.length > 0 ? selectedStrategyIds : undefined),
     [selectedStrategyIds],
   );
   const selectedStrategyLabel = useMemo(
     () => {
+      if (isOneClickPresetSelected) {
+        return '八维+紫苏叶+缠论';
+      }
       if (selectedStrategies.length === 0) {
         return t('home.strategy');
       }
@@ -268,18 +292,26 @@ const HomePage: React.FC = () => {
       }
       return `${selectedStrategies[0].name} +${selectedStrategies.length - 1}`;
     },
-    [selectedStrategies, t],
+    [isOneClickPresetSelected, selectedStrategies, t],
   );
-  const strategyOptions = useMemo(
+  const strategyOptions = useMemo<StrategyMenuOption[]>(
     () => [
       { id: '', name: t('home.defaultStrategyName'), description: t('home.defaultStrategyDescription') },
+      {
+        id: ONE_CLICK_EIGHT_ZISU_CHAN_ID,
+        name: '一键：八维+紫苏叶+缠论',
+        description: isOneClickPresetAvailable
+          ? '同时启用八维深度、题材生命周期量价纪律、缠论结构买卖点。'
+          : '等待八维、紫苏叶、缠论策略加载完成后可用。',
+        skillIds: oneClickPresetSkillIds,
+      },
       ...analysisSkills.map((skill) => ({
         id: skill.id,
         name: skill.name,
         description: skill.description,
       })),
     ],
-    [analysisSkills, t],
+    [analysisSkills, isOneClickPresetAvailable, oneClickPresetSkillIds, t],
   );
   const closeStrategyMenu = useCallback((restoreFocus = false) => {
     setStrategyMenuOpen(false);
@@ -287,21 +319,30 @@ const HomePage: React.FC = () => {
       strategyButtonRef.current?.focus();
     }
   }, []);
-  const toggleStrategy = useCallback((strategyId: string) => {
-    if (!strategyId) {
+  const applyStrategyOption = useCallback((option: StrategyMenuOption) => {
+    if (!option.id) {
       setSelectedStrategyIds([]);
       return;
     }
+    if (option.skillIds) {
+      if (option.skillIds.length !== ONE_CLICK_EIGHT_ZISU_CHAN_SKILLS.length) {
+        return;
+      }
+      const presetSelected = option.skillIds.every((skillId) => selectedStrategyIds.includes(skillId))
+        && selectedStrategyIds.length === option.skillIds.length;
+      setSelectedStrategyIds(presetSelected ? [] : option.skillIds);
+      return;
+    }
     setSelectedStrategyIds((prev) => {
-      if (prev.includes(strategyId)) {
-        return prev.filter((id) => id !== strategyId);
+      if (prev.includes(option.id)) {
+        return prev.filter((id) => id !== option.id);
       }
       if (prev.length >= MAX_HOME_SELECTED_SKILLS) {
         return prev;
       }
-      return [...prev, strategyId];
+      return [...prev, option.id];
     });
-  }, []);
+  }, [selectedStrategyIds]);
   const focusStrategyItem = useCallback((index: number) => {
     const itemCount = strategyOptions.length;
     if (itemCount === 0) {
@@ -778,8 +819,13 @@ const HomePage: React.FC = () => {
                         可多选，最多 {MAX_HOME_SELECTED_SKILLS} 个；默认策略表示不指定技能。
                       </div>
                       {strategyOptions.map((option, index) => {
-                        const selected = option.id ? selectedStrategyIds.includes(option.id) : selectedStrategyIds.length === 0;
-                        const disabled = Boolean(option.id) && !selected && selectedStrategyIds.length >= MAX_HOME_SELECTED_SKILLS;
+                        const selected = option.skillIds
+                          ? option.skillIds.every((skillId) => selectedStrategyIds.includes(skillId))
+                            && selectedStrategyIds.length === option.skillIds.length
+                          : option.id ? selectedStrategyIds.includes(option.id) : selectedStrategyIds.length === 0;
+                        const disabled = option.skillIds
+                          ? option.skillIds.length !== ONE_CLICK_EIGHT_ZISU_CHAN_SKILLS.length
+                          : Boolean(option.id) && !selected && selectedStrategyIds.length >= MAX_HOME_SELECTED_SKILLS;
                         return (
                           <button
                             key={option.id || 'default'}
@@ -791,7 +837,7 @@ const HomePage: React.FC = () => {
                             aria-checked={selected}
                             disabled={disabled}
                             tabIndex={-1}
-                            onClick={() => toggleStrategy(option.id)}
+                            onClick={() => applyStrategyOption(option)}
                             className="flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-hover disabled:cursor-not-allowed disabled:opacity-45"
                           >
                             <Check className={`mt-0.5 h-4 w-4 flex-shrink-0 ${selected ? 'opacity-100' : 'opacity-0'}`} aria-hidden="true" />
