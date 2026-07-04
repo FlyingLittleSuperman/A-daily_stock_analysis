@@ -39,6 +39,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
+| [AI投顾值班室使用说明](advisor-copilot-guide.md) | 主动分析工作台、日内值班节奏、飞书/微信推送、API 调用和后续改造入口 |
 | [Bot 命令与接入](bot-command.md) | Bot 命令、Webhook、平台接入和回调说明 |
 | [Bot 平台配置](bot/) | 飞书、钉钉、Discord 等 Bot 配置截图和补充说明 |
 | [实时告警中心](alerts.md) | EventMonitor 基线、Web 规则管理、通知结果、冷却状态和 Phase 边界 |
